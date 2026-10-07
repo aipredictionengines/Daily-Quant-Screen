@@ -10,11 +10,12 @@ from zoneinfo import ZoneInfo
 from dqs.adapters.binance import BinanceAdapter
 from dqs.adapters.gemini import GeminiContextAdapter
 from dqs.adapters.polymarket import PolymarketAdapter, PolymarketStructure
+from dqs.calendar import is_official_fomc_meeting_day
 from dqs.models import RangeBracket
 from dqs.quant.features import calculate_features
 from dqs.quant.forecast import deterministic_seed, simulate
 from dqs.storage import write_immutable
-from dqs.timeutils import ceil_steps, market_datetime
+from dqs.timeutils import ceil_steps, in_local_window, market_datetime
 
 
 @dataclass
@@ -45,13 +46,25 @@ class Pipeline:
         locked_at = now.isoformat()
         out_dir = self.paper_dir(day)
 
+        if now.date() != day:
+            raise RuntimeError(
+                f"Morning forecast date mismatch: requested {day.isoformat()}, local date is {now.date().isoformat()}"
+            )
+        window = self.config.get("forecast_window_local", ["05:00", "08:00"])
+        if not in_local_window(now, window[0], window[1]):
+            raise RuntimeError(
+                f"Forecast lock outside allowed {window[0]}–{window[1]} {self.config['local_timezone']} window"
+            )
+
         weekday = day.strftime("%A")
         static_skip = weekday in self.config.get("skip_weekdays", [])
 
         context = self.gemini.analyze(day, asset="BTC")
+        fomc_path = self.root / self.config.get("fomc_calendar_file", "config/fomc-2026.json")
+        fomc_day, fomc_calendar_status = is_official_fomc_meeting_day(day, fomc_path)
         fomc_skip = bool(
             self.config.get("skip_official_fomc_meeting_days", True)
-            and context.official_fomc_meeting_day is True
+            and fomc_day
         )
 
         structure = self.polymarket.discover_btc_daily(day)
@@ -115,11 +128,13 @@ class Pipeline:
             "data_gate": {
                 "binance": "PASS",
                 "polymarket_structure": "PASS" if structure.ranges else "FAIL",
+                "fomc_calendar": fomc_calendar_status,
                 "gemini_context": context.status,
             },
             "rules": {
                 "range_resolution_timezone": self.config["market_timezone"],
                 "range_resolution_time": self.config["range_resolution_time"],
+                "range_resolution_reference": self.config.get("range_resolution_reference", "CLOSE_AT"),
                 "hit_resolution_time": self.config["hit_resolution_time"],
                 "skip_weekdays": self.config.get("skip_weekdays", []),
                 "skip_official_fomc_meeting_days": self.config.get("skip_official_fomc_meeting_days", True),
