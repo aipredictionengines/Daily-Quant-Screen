@@ -1,0 +1,78 @@
+{
+  "schema_version": "dqs.qa.buglog.v0.1",
+  "updated_at": "2026-10-07T06:15:00+03:00",
+  "bugs": [
+    {
+      "id": "DQS-BUG-001",
+      "title": "Live Binance + Polymarket API integration has not been verified end-to-end",
+      "severity": "P1",
+      "status": "OPEN",
+      "area": "integrations",
+      "blocks_paper_test": true,
+      "found_in": "BUILD-001",
+      "description": "Unit tests pass, but the build environment could not perform live network calls. The morning pipeline must complete against the real public APIs before PAPER 20 starts.",
+      "evidence": "Known build limitation documented in README.md",
+      "next_action": "Run LIVE-DATA-001 health test against Binance klines, Polymarket Gamma and Polymarket CLOB; capture raw responses and verify parsers."
+    },
+    {
+      "id": "DQS-BUG-002",
+      "title": "Daily Polymarket resolution rule is configured but not automatically verified against the market rules text",
+      "severity": "P1",
+      "status": "OPEN",
+      "area": "resolution",
+      "blocks_paper_test": true,
+      "found_in": "BUILD-001",
+      "description": "The pipeline currently relies on configured resolution timezone/time. Before a scored forecast, the exact source, symbol, candle, time and boundary convention must match that day's market rules.",
+      "evidence": "README limitation: exact resolution rule must remain market-specific",
+      "next_action": "Add a rules snapshot/verification step and refuse scoring when rule verification is not PASS."
+    },
+    {
+      "id": "DQS-BUG-003",
+      "title": "Europe/Sofia ↔ America/New_York DST edge cases need integration tests",
+      "severity": "P1",
+      "status": "OPEN",
+      "area": "timezones",
+      "blocks_paper_test": true,
+      "found_in": "BUILD-001",
+      "description": "The implementation uses IANA time zones, but the periods when US and EU daylight-saving transitions differ need explicit tests to prevent one-hour resolution errors.",
+      "evidence": "Time conversion is critical to lock and resolution timestamps",
+      "next_action": "Add DST test vectors for spring/fall transition windows and verify exact UTC candle timestamps."
+    },
+    {
+      "id": "DQS-BUG-004",
+      "title": "Hit-price forecasts are generated but hit-price scoring is not yet persisted",
+      "severity": "P2",
+      "status": "OPEN",
+      "area": "scoring",
+      "blocks_paper_test": false,
+      "found_in": "BUILD-001",
+      "description": "BUILD-001 can estimate hit probabilities, but score.json currently focuses on daily range scoring.",
+      "evidence": "Known limitation documented in README.md",
+      "next_action": "Implement high/low-based hit resolution and Brier scoring before HIT PAPER tests are counted."
+    },
+    {
+      "id": "DQS-BUG-005",
+      "title": "Gemini context failure path needs a recorded fallback test",
+      "severity": "P2",
+      "status": "OPEN",
+      "area": "context",
+      "blocks_paper_test": false,
+      "found_in": "BUILD-001",
+      "description": "Gemini is non-authoritative for the numerical forecast, but the system should prove that API errors degrade to VERIFY/UNKNOWN without breaking the forecast pipeline.",
+      "evidence": "Pipeline records Gemini status but fallback has not been live-tested",
+      "next_action": "Run with missing/invalid GEMINI_API_KEY and a simulated HTTP failure; confirm deterministic safe degradation."
+    },
+    {
+      "id": "DQS-BUG-006",
+      "title": "GitHub Pages observability deployment not yet verified",
+      "severity": "P3",
+      "status": "OPEN",
+      "area": "dashboard",
+      "blocks_paper_test": false,
+      "found_in": "BUILD-001",
+      "description": "The HTML renderer exists locally, but the public Pages deployment and latest-status view have not been tested.",
+      "evidence": "Repository has not yet been created/deployed",
+      "next_action": "Publish docs/ via GitHub Pages and confirm the current forecast, benchmark, resolution, score and QA status are visible."
+    }
+  ]
+}
