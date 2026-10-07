@@ -18,24 +18,34 @@ def _day(value: str) -> date:
     return date.fromisoformat(value)
 
 
+def _mode(value: str) -> str:
+    mode = value.upper()
+    if mode not in {"PAPER", "CANDIDATE"}:
+        raise argparse.ArgumentTypeError("mode must be paper or candidate")
+    return mode
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="dqs", description="Daily Quant Screen — paper-only BUILD-001")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--root", default=".")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    morning = sub.add_parser("morning", help="Build and lock a BTC paper forecast, then capture Polymarket benchmark")
+    morning = sub.add_parser("morning", help="Build and lock a BTC forecast, then capture Polymarket benchmark")
     morning.add_argument("--date", type=_day, default=date.today())
+    morning.add_argument("--mode", type=_mode, default="PAPER")
 
-    resolve = sub.add_parser("resolve", help="Resolve one paper day from Binance and score it")
+    resolve = sub.add_parser("resolve", help="Resolve one candidate/paper day from Binance and score it")
     resolve.add_argument("--date", type=_day, required=True)
+    resolve.add_argument("--mode", type=_mode, default="PAPER")
 
     render = sub.add_parser("render", help="Render HTML screen from locked artifacts")
     render.add_argument("--date", type=_day, required=True)
+    render.add_argument("--mode", type=_mode, default="PAPER")
 
-    sub.add_parser("scoreboard", help="Aggregate completed PAPER days")
-    sub.add_parser("buglog", help="Show current QA bug counts and blocker bugs")
-    sub.add_parser("readiness", help="Show whether BUILD-001 is ready to start PAPER 20")
+    sub.add_parser("scoreboard", help="Aggregate completed official PAPER days only")
+    sub.add_parser("buglog", help="Show current QA bug inventory")
+    sub.add_parser("readiness", help="Show candidate/PAPER readiness")
 
     args = parser.parse_args()
     root = Path(args.root).resolve()
@@ -45,12 +55,12 @@ def main() -> None:
     pipeline = Pipeline.from_config(config_path, root)
 
     if args.cmd == "morning":
-        result = pipeline.morning(args.date)
+        result = pipeline.morning(args.date, run_mode=args.mode)
         print(json.dumps({k: str(v) for k, v in result.items()}, indent=2))
         return
 
     if args.cmd == "resolve":
-        out = pipeline.paper_dir(args.date)
+        out = pipeline.artifact_dir(args.date, args.mode)
         forecast_env = read_envelope(out / "forecast.json")
         payload = forecast_env["payload"]
         resolution_payload = resolve_binance_close(
@@ -59,11 +69,15 @@ def main() -> None:
             args.date,
             payload["rules"]["range_resolution_timezone"],
             payload["rules"]["range_resolution_time"],
+            payload["rules"].get("range_resolution_reference", "CLOSE_AT"),
         )
+        resolution_payload["run_mode"] = args.mode
         resolution_path = out / "resolution.json"
         write_immutable(resolution_path, resolution_payload)
         score_payload = {
-            "schema_version": "dqs.paper.score.v0.1",
+            "schema_version": "dqs.score.v0.2",
+            "run_mode": args.mode,
+            "counts_toward_paper_20": args.mode == "PAPER",
             "market_date": args.date.isoformat(),
             "forecast_sha256": forecast_env["sha256"],
             "decision": payload["decision"],
@@ -75,7 +89,7 @@ def main() -> None:
         return
 
     if args.cmd == "render":
-        out = pipeline.paper_dir(args.date)
+        out = pipeline.artifact_dir(args.date, args.mode)
         forecast = read_envelope(out / "forecast.json")["payload"]
         benchmark_path = out / "benchmark.json"
         benchmark = read_envelope(benchmark_path)["payload"] if benchmark_path.exists() else None
@@ -89,7 +103,7 @@ def main() -> None:
         bugs = log.get("bugs", [])
         summary = {
             "total": len(bugs),
-            "open": sum(1 for b in bugs if str(b.get("status", "OPEN")).upper() != "CLOSED"),
+            "active": sum(1 for b in bugs if str(b.get("status", "OPEN")).upper() != "CLOSED"),
             "bugs": bugs,
         }
         print(json.dumps(summary, indent=2))
@@ -105,6 +119,8 @@ def main() -> None:
         for score_path in sorted(paper_root.glob("*/BTC/score.json")) if paper_root.exists() else []:
             payload = read_envelope(score_path)["payload"]
             if payload.get("decision") == "SKIP":
+                continue
+            if payload.get("run_mode", "PAPER") != "PAPER":
                 continue
             completed.append(payload)
         exact = sum(1 for x in completed if x.get("exact_primary"))
