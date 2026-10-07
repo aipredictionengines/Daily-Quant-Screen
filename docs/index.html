@@ -23,7 +23,7 @@ a{color:#8bd5ff}.tag{display:inline-block;border:1px solid #39485c;border-radius
 
 <div class="grid">
   <div class="metric"><div class="muted">QA state</div><div class="big yellow">CANDIDATE READY</div></div>
-  <div class="metric"><div class="muted">CI</div><div class="big green">18 / 18 PASS</div></div>
+  <div class="metric"><div class="muted">CI</div><div class="big green">19 / 19 PASS</div></div>
   <div class="metric"><div class="muted">Red blockers</div><div class="big green">0</div></div>
   <div class="metric"><div class="muted">PAPER 20</div><div class="big">0 / 20</div></div>
 </div>
@@ -49,9 +49,9 @@ a{color:#8bd5ff}.tag{display:inline-block;border:1px solid #39485c;border-radius
 <div class="card">
 <h2>Candidate gate</h2>
 <p><span class="tag yellow">DQS-BTC-CANDIDATE-001</span></p>
-<p>The first candidate is non-counting. It must complete:</p>
+<p>The first candidate is non-counting and is scheduled automatically for the next eligible Friday morning. It must complete:</p>
 <p><strong>05:00–08:00 Sofia lock → immutable SHA-256 → post-lock Polymarket benchmark → Binance resolution → score → review.</strong></p>
-<p>Thursday and official FOMC meeting days remain hard skips. A clean candidate can unlock the review for official <strong>P001/20</strong>.</p>
+<p>Thursday and official FOMC meeting days remain hard skips. A clean candidate automatically unlocks <strong>READY_FOR_PAPER</strong>; the gated PAPER workflow can then create <strong>P001/20</strong> on the next eligible morning.</p>
 </div>
 
 <div class="card">
