@@ -72,12 +72,13 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           p = Path("qa/candidate-gate.json")
           data = json.loads(p.read_text()) if p.exists() else {}
           ready = data.get("state") == "READY_FOR_PAPER" and data.get("passed") is True
           print(f"candidate_gate_ready_for_paper={ready}")
-          with open("$GITHUB_OUTPUT", "a", encoding="utf-8") as fh:
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
               fh.write(f"already_passed={'true' if ready else 'false'}\n")
           PY
 
