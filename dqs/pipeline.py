@@ -52,6 +52,11 @@ class Pipeline:
             return self.candidate_dir(day)
         raise ValueError(f"Unsupported run_mode: {run_mode}")
 
+    def next_paper_test_id(self) -> str:
+        paper_root = self.root / "artifacts" / "paper"
+        existing = list(paper_root.glob("*/BTC/forecast.json")) if paper_root.exists() else []
+        return f"DQS-BTC-P{len(existing) + 1:03d}"
+
     def morning(
         self,
         day: date,
@@ -154,9 +159,12 @@ class Pipeline:
         if context.status != "PASS":
             reasons.append(f"gemini_context:{context.status}")
 
+        test_id = "DQS-BTC-CANDIDATE-001" if mode == "CANDIDATE" else self.next_paper_test_id()
+
         payload = {
-            "schema_version": "dqs.forecast.v0.2",
+            "schema_version": "dqs.forecast.v0.3",
             "run_mode": mode,
+            "test_id": test_id,
             "series": "BTC DAILY RANGE PAPER 20",
             "counts_toward_paper_20": mode == "PAPER",
             "asset": self.config["asset"],
@@ -194,6 +202,7 @@ class Pipeline:
         benchmark_payload = {
             "schema_version": "dqs.benchmark.v0.2",
             "run_mode": mode,
+            "test_id": test_id,
             "market_date": day.isoformat(),
             "forecast_sha256": forecast_hash,
             "captured_at": datetime.now(local_tz).isoformat(),
@@ -207,6 +216,7 @@ class Pipeline:
             "benchmark": benchmark_path,
             "decision": decision,
             "run_mode": mode,
+            "test_id": test_id,
         }
 
     def _fallback_structure(self, price: float, existing: PolymarketStructure) -> PolymarketStructure:
