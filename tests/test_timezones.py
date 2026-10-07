@@ -1,7 +1,7 @@
 from datetime import date
 from zoneinfo import ZoneInfo
 
-from dqs.timeutils import market_datetime
+from dqs.timeutils import candle_open_for_close, market_datetime
 
 
 def _sofia_hour(day: date) -> int:
@@ -27,3 +27,11 @@ def test_us_eu_fall_dst_mismatch_is_18_sofia():
 
 def test_normal_late_fall_is_19_sofia():
     assert _sofia_hour(date(2026, 11, 15)) == 19
+
+
+def test_close_at_noon_uses_1159_binance_candle_open():
+    close_at = market_datetime(date(2026, 10, 7), "12:00", "America/New_York")
+    open_at = candle_open_for_close(close_at, 1)
+    assert open_at.hour == 11
+    assert open_at.minute == 59
+    assert open_at.utcoffset() == close_at.utcoffset()
