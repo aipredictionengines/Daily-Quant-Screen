@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -16,6 +16,10 @@ def local_now(tz_name: str) -> datetime:
 def market_datetime(day: date, hhmm: str, market_tz: str) -> datetime:
     t = parse_hhmm(hhmm)
     return datetime.combine(day, t, ZoneInfo(market_tz))
+
+
+def candle_open_for_close(close_at: datetime, interval_minutes: int = 1) -> datetime:
+    return close_at - timedelta(minutes=interval_minutes)
 
 
 def ceil_steps(start: datetime, end: datetime, step_minutes: int) -> int:
