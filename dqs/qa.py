@@ -50,6 +50,7 @@ def readiness_report(root: Path) -> dict[str, Any]:
         "candidate_ready": not red_blockers,
         "ready_for_paper": False,
         "open_bug_counts": counts,
+        "blocker_count": len(red_blockers) + len(verify_blockers),
         "red_blocker_count": len(red_blockers),
         "verify_blocker_count": len(verify_blockers),
         "red_blockers": [
