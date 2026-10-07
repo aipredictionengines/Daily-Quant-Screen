@@ -12,6 +12,7 @@ class RuleCheck:
     interval: str | None
     metric: str | None
     time_et: str | None
+    candle_reference: str | None
     boundary_rule: str | None
     status: str
     evidence: str
@@ -28,6 +29,7 @@ def verify_btc_range_rules(text: str | None) -> RuleCheck:
             interval=None,
             metric=None,
             time_et=None,
+            candle_reference=None,
             boundary_rule=None,
             status="VERIFY",
             evidence="No rules text was available from the market metadata.",
@@ -45,12 +47,18 @@ def verify_btc_range_rules(text: str | None) -> RuleCheck:
     if "12:00" in lower and ("et" in lower or "eastern" in lower or "noon" in lower):
         time_et = "12:00 America/New_York"
 
+    candle_reference = None
+    if re.search(r"(closing|close)\s+at\s+12:00", lower):
+        candle_reference = "CLOSE_AT"
+    elif re.search(r"(opening|open)\s+at\s+12:00", lower):
+        candle_reference = "OPEN_AT"
+
     boundary_rule = None
     if "exactly between two brackets" in lower and "higher range bracket" in lower:
         boundary_rule = "EXACT_BOUNDARY_TO_HIGHER_BRACKET"
 
-    required = [source, pair, interval, metric, time_et, boundary_rule]
-    status = "PASS" if all(required) else "VERIFY"
+    required = [source, pair, interval, metric, time_et, candle_reference, boundary_rule]
+    status = "PASS" if all(required) and candle_reference == "CLOSE_AT" else "VERIFY"
     missing = [
         name
         for name, value in [
@@ -59,17 +67,25 @@ def verify_btc_range_rules(text: str | None) -> RuleCheck:
             ("interval", interval),
             ("metric", metric),
             ("time_et", time_et),
+            ("candle_reference", candle_reference),
             ("boundary_rule", boundary_rule),
         ]
         if not value
     ]
-    evidence = "Rules signature matched." if not missing else f"Rules text present but missing/ambiguous: {', '.join(missing)}."
+    if missing:
+        evidence = f"Rules text present but missing/ambiguous: {', '.join(missing)}."
+    elif candle_reference != "CLOSE_AT":
+        evidence = f"Unexpected candle reference: {candle_reference}."
+    else:
+        evidence = "Rules signature matched, including candle closing-time semantics."
+
     return RuleCheck(
         source=source,
         pair=pair,
         interval=interval,
         metric=metric,
         time_et=time_et,
+        candle_reference=candle_reference,
         boundary_rule=boundary_rule,
         status=status,
         evidence=evidence,
