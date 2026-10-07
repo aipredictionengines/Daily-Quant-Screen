@@ -1,0 +1,51 @@
+name: Daily Quant Screen bug
+description: Record a defect or QA finding for the Daily Quant Screen test gate
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: dropdown
+    id: blocks_paper
+    attributes:
+      label: Blocks PAPER testing?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / reproduction
+      description: Include timestamps, market date, artifact paths and API/source details.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Define how the original scenario will be re-tested before the issue is closed.
+    validations:
+      required: true
