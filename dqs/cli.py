@@ -75,8 +75,9 @@ def main() -> None:
         resolution_path = out / "resolution.json"
         write_immutable(resolution_path, resolution_payload)
         score_payload = {
-            "schema_version": "dqs.score.v0.2",
+            "schema_version": "dqs.score.v0.3",
             "run_mode": args.mode,
+            "test_id": payload.get("test_id"),
             "counts_toward_paper_20": args.mode == "PAPER",
             "market_date": args.date.isoformat(),
             "forecast_sha256": forecast_env["sha256"],
