@@ -1,0 +1,200 @@
+name: DQS BTC PAPER 20
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "PAPER lifecycle action"
+        required: true
+        type: choice
+        options:
+          - lock
+          - resolve
+        default: lock
+      market_date:
+        description: "YYYY-MM-DD; leave blank to use current Europe/Sofia date"
+        required: false
+        type: string
+  schedule:
+    # 06:35 Sofia in EEST / 05:35 in EET.
+    - cron: "35 3 * * *"
+    # After 12:00 ET resolution for all normal/mismatch DST combinations.
+    - cron: "15 17 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dqs-btc-paper
+  cancel-in-progress: false
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve action and market date
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "35 3 * * *" ]; then
+              ACTION="lock"
+            else
+              ACTION="resolve"
+            fi
+            D="$(TZ=Europe/Sofia date +%F)"
+          else
+            ACTION="${{ inputs.action }}"
+            if [ -n "${{ inputs.market_date }}" ]; then
+              D="${{ inputs.market_date }}"
+            else
+              D="$(TZ=Europe/Sofia date +%F)"
+            fi
+          fi
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "date=$D" >> "$GITHUB_OUTPUT"
+
+      - name: PAPER readiness gate
+        id: ready
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from dqs.qa import readiness_report
+          r = readiness_report(Path("."))
+          print(r)
+          ready = bool(r.get("ready_for_paper"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"ready={'true' if ready else 'false'}\n")
+          PY
+
+      - name: Protocol eligibility and PAPER cap
+        id: protocol
+        if: steps.meta.outputs.action == 'lock' && steps.ready.outputs.ready == 'true'
+        shell: bash
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          python - <<PY
+          import os
+          from datetime import date
+          from pathlib import Path
+          from dqs.calendar import is_official_fomc_meeting_day
+
+          d = date.fromisoformat("$D")
+          paper_root = Path("artifacts/paper")
+          existing = list(paper_root.glob("*/BTC/forecast.json")) if paper_root.exists() else []
+          duplicate = Path(f"artifacts/paper/{d.isoformat()}/BTC/forecast.json").exists()
+          thursday = d.strftime("%A") == "Thursday"
+          fomc, fomc_status = is_official_fomc_meeting_day(d, Path("config/fomc-2026.json"))
+
+          eligible = (
+              len(existing) < 20
+              and not duplicate
+              and not thursday
+              and fomc_status == "PASS"
+              and not fomc
+          )
+          print({
+              "existing_paper_forecasts": len(existing),
+              "duplicate": duplicate,
+              "thursday": thursday,
+              "fomc_status": fomc_status,
+              "official_fomc_meeting_day": fomc,
+              "eligible": eligible,
+          })
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"eligible={'true' if eligible else 'false'}\n")
+          PY
+
+      - name: LIVE-DATA health before PAPER lock
+        if: steps.meta.outputs.action == 'lock' && steps.ready.outputs.ready == 'true' && steps.protocol.outputs.eligible == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          mkdir -p "artifacts/paper/$D/BTC"
+          python -m dqs.health --root . --date "$D" --output "artifacts/paper/$D/BTC/health.json"
+
+      - name: Lock official PAPER forecast
+        if: steps.meta.outputs.action == 'lock' && steps.ready.outputs.ready == 'true' && steps.protocol.outputs.eligible == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          python -m dqs.cli --root . morning --date "$D" --mode paper
+
+      - name: Persist PAPER lock
+        if: steps.meta.outputs.action == 'lock' && steps.ready.outputs.ready == 'true' && steps.protocol.outputs.eligible == 'true'
+        shell: bash
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          git config user.name "DQS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add "artifacts/paper/$D/BTC"
+          git commit -m "paper: lock BTC forecast for $D"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+      - name: Refresh main before PAPER resolution
+        if: steps.meta.outputs.action == 'resolve' && steps.ready.outputs.ready == 'true'
+        shell: bash
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+
+      - name: PAPER existence gate
+        id: paperday
+        if: steps.meta.outputs.action == 'resolve' && steps.ready.outputs.ready == 'true'
+        shell: bash
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          if [ -f "artifacts/paper/$D/BTC/forecast.json" ] && [ ! -f "artifacts/paper/$D/BTC/score.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve and score PAPER forecast
+        if: steps.meta.outputs.action == 'resolve' && steps.ready.outputs.ready == 'true' && steps.paperday.outputs.exists == 'true'
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          python -m dqs.cli --root . resolve --date "$D" --mode paper
+          python -m dqs.cli --root . scoreboard > paper-scoreboard.json
+
+      - name: Persist PAPER result
+        if: steps.meta.outputs.action == 'resolve' && steps.ready.outputs.ready == 'true' && steps.paperday.outputs.exists == 'true'
+        shell: bash
+        run: |
+          D="${{ steps.meta.outputs.date }}"
+          mkdir -p docs
+          cp paper-scoreboard.json docs/paper-scoreboard.json
+          git config user.name "DQS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add "artifacts/paper/$D/BTC" docs/paper-scoreboard.json
+          git commit -m "paper: resolve BTC forecast for $D"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+      - name: Upload PAPER evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-${{ steps.meta.outputs.action }}-${{ steps.meta.outputs.date }}
+          path: |
+            artifacts/paper/${{ steps.meta.outputs.date }}/BTC/
+            paper-scoreboard.json
+          if-no-files-found: warn
+          retention-days: 90
