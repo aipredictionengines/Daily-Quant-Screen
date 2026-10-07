@@ -1,0 +1,19 @@
+{
+  "asset": "BTCUSDT",
+  "paper_target": 20,
+  "forecast_window_local": ["05:00", "08:00"],
+  "local_timezone": "Europe/Sofia",
+  "market_timezone": "America/New_York",
+  "range_resolution_time": "12:00",
+  "hit_resolution_time": "23:59",
+  "skip_weekdays": ["Thursday"],
+  "skip_official_fomc_meeting_days": true,
+  "require_polymarket_structure": true,
+  "historical_interval": "15m",
+  "historical_candles": 3000,
+  "simulations": 12000,
+  "auto_bracket_step": 2000,
+  "min_confidence": 55,
+  "extreme_event_risk_skips": false,
+  "gemini_model": "gemini-3.8-flash"
+}
