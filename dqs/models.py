@@ -20,14 +20,16 @@ class Candle:
 
 @dataclass(frozen=True)
 class RangeBracket:
-    lower: float
-    upper: float
+    lower: float | None
+    upper: float | None
     label: str
     market_id: str | None = None
     yes_asset_id: str | None = None
 
     def contains(self, price: float) -> bool:
-        return self.lower <= price < self.upper
+        lower_ok = self.lower is None or price >= self.lower
+        upper_ok = self.upper is None or price < self.upper
+        return lower_ok and upper_ok
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
