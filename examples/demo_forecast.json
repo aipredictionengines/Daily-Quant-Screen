@@ -1,0 +1,10 @@
+{
+  "note": "Illustrative only — not live data",
+  "asset": "BTCUSDT",
+  "primary_range": "$82k-$84k",
+  "primary_probability": 0.54,
+  "alternative_range": "$84k-$86k",
+  "alternative_probability": 0.29,
+  "confidence": 74,
+  "event_risk": "MEDIUM"
+}
