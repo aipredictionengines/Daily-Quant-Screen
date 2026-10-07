@@ -6,43 +6,67 @@
 <title>Daily Quant Screen</title>
 <style>
 body{margin:0;background:#0b0f14;color:#e8eef7;font-family:Inter,system-ui,sans-serif}
-.wrap{max-width:980px;margin:auto;padding:28px}
+.wrap{max-width:1040px;margin:auto;padding:28px}
 .card{background:#121923;border:1px solid #253040;border-radius:16px;padding:20px;margin:14px 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .metric{background:#0e151e;border-radius:12px;padding:14px}
-.big{font-size:28px;font-weight:700}
-.muted{color:#90a0b5}.bad{color:#ff8f8f}.ok{color:#90f0b2}
+.big{font-size:26px;font-weight:700}
+.muted{color:#90a0b5}.green{color:#90f0b2}.yellow{color:#ffd978}.red{color:#ff8f8f}
 table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #253040;text-align:left}
-a{color:#8bd5ff}
+a{color:#8bd5ff}.tag{display:inline-block;border:1px solid #39485c;border-radius:999px;padding:4px 9px}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>Daily Quant Screen</h1>
-<p class="muted">BUILD-001 · BTC Daily Range · PAPER 20 not started</p>
+<p class="muted">BUILD-001 · BTC Daily Range · QA snapshot 07 Oct 2026</p>
+
 <div class="grid">
-  <div class="metric"><div class="muted">QA state</div><div class="big bad">BLOCKED</div></div>
-  <div class="metric"><div class="muted">Unit tests</div><div class="big ok">6 / 6</div></div>
+  <div class="metric"><div class="muted">QA state</div><div class="big yellow">CANDIDATE READY</div></div>
+  <div class="metric"><div class="muted">CI</div><div class="big green">18 / 18 PASS</div></div>
+  <div class="metric"><div class="muted">Red blockers</div><div class="big green">0</div></div>
   <div class="metric"><div class="muted">PAPER 20</div><div class="big">0 / 20</div></div>
-  <div class="metric"><div class="muted">Next gate</div><div class="big">LIVE-DATA-001</div></div>
 </div>
+
 <div class="card">
-<h2>Open bugs</h2>
+<h2>Source health</h2>
 <table>
-<thead><tr><th>ID</th><th>Severity</th><th>Area</th><th>Blocks PAPER?</th></tr></thead>
+<thead><tr><th>Check</th><th>Status</th><th>Evidence</th></tr></thead>
 <tbody>
-<tr><td>DQS-BUG-001</td><td>P1</td><td>integrations</td><td>YES</td></tr>
-<tr><td>DQS-BUG-002</td><td>P1</td><td>resolution</td><td>YES</td></tr>
-<tr><td>DQS-BUG-003</td><td>P1</td><td>timezones</td><td>YES</td></tr>
-<tr><td>DQS-BUG-004</td><td>P2</td><td>scoring</td><td>NO</td></tr>
-<tr><td>DQS-BUG-005</td><td>P2</td><td>context</td><td>NO</td></tr>
-<tr><td>DQS-BUG-006</td><td>P3</td><td>dashboard</td><td>NO</td></tr>
+<tr><td>Binance</td><td class="green">PASS</td><td>Live price + 15m klines; official market-data fallback verified</td></tr>
+<tr><td>Polymarket Gamma</td><td class="green">PASS</td><td>Daily BTC event discovered</td></tr>
+<tr><td>Polymarket CLOB</td><td class="green">PASS</td><td>Outcome midpoint read successfully</td></tr>
+<tr><td>Range coverage</td><td class="green">PASS</td><td>11 brackets: 9 finite + both open-ended tails</td></tr>
+<tr><td>Market rules</td><td class="green">PASS</td><td>Binance · BTC/USDT · 1m · Close · closing 12:00 ET · higher-boundary rule</td></tr>
+<tr><td>FOMC calendar gate</td><td class="green">PASS</td><td>Independent official meeting-day snapshot</td></tr>
+<tr><td>Timezone / DST</td><td class="green">PASS</td><td>IANA conversion + DST mismatch tests</td></tr>
+<tr><td>Resolution replay</td><td class="green">PASS</td><td>Exact historical Binance 1m open/close timestamps matched</td></tr>
+<tr><td>Gemini context</td><td class="yellow">VERIFY</td><td>No GitHub Actions secret configured; numerical model remains independent</td></tr>
 </tbody>
 </table>
 </div>
+
 <div class="card">
-<h2>Readiness rule</h2>
-<p>We do not count a PAPER 20 forecast until all P0/P1 blockers are closed and the full readiness gate passes.</p>
+<h2>Candidate gate</h2>
+<p><span class="tag yellow">DQS-BTC-CANDIDATE-001</span></p>
+<p>The first candidate is non-counting. It must complete:</p>
+<p><strong>05:00–08:00 Sofia lock → immutable SHA-256 → post-lock Polymarket benchmark → Binance resolution → score → review.</strong></p>
+<p>Thursday and official FOMC meeting days remain hard skips. A clean candidate can unlock the review for official <strong>P001/20</strong>.</p>
+</div>
+
+<div class="card">
+<h2>Active non-blocking work</h2>
+<table>
+<thead><tr><th>ID</th><th>Status</th><th>Area</th></tr></thead>
+<tbody>
+<tr><td>DQS-BUG-004</td><td>OPEN · P2</td><td>Hit-price scoring persistence</td></tr>
+<tr><td>DQS-BUG-005</td><td class="yellow">VERIFY · P2</td><td>Gemini full failure-path test</td></tr>
+<tr><td>DQS-BUG-006</td><td>OPEN · P3</td><td>GitHub Pages visual deployment confirmation</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
 <p><a href="BUG-LOG.md">Bug Log</a> · <a href="TEST-READINESS.md">Test Readiness</a> · <a href="PAPER-20.md">PAPER 20 protocol</a></p>
 </div>
 </div>
