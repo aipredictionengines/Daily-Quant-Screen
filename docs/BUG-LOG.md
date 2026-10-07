@@ -1,49 +1,47 @@
 # Daily Quant Screen — Bug Log
 
-This log is part of the **test gate**, not just a notes file. A PAPER 20 forecast must not be counted until the readiness gate says `READY_FOR_PAPER`.
+This log is part of the test gate. The machine-readable source of truth is `qa/bug-log.json`.
 
-The machine-readable source of truth is `qa/bug-log.json`. GitHub Issues can mirror these entries after the public repository is created.
-
-## Severity
-
-| Severity | Meaning | PAPER impact |
-|---|---|---|
-| `P0` | Data corruption, leakage, wrong resolution, or unsafe behavior | Immediate blocker |
-| `P1` | Core forecast/resolution/integrity defect | Blocker |
-| `P2` | Important defect with a safe workaround or non-core missing feature | Usually non-blocking |
-| `P3` | UI/docs/observability issue | Non-blocking unless specifically promoted |
-
-## Status
+## Lifecycle
 
 `OPEN → FIXING → VERIFY → CLOSED`
 
-`DEFERRED` is allowed only for non-blocking P2/P3 issues with a written reason.
+A bug is not closed merely because code changed. The original scenario must be verified again.
 
-## Current known issues
+## Current status — 2026-10-07
 
-| ID | Severity | Status | Area | Blocks PAPER? | Summary |
+| ID | Severity | Status | Area | PAPER blocker | Result |
 |---|---:|---|---|---|---|
-| DQS-BUG-001 | P1 | OPEN | integrations | YES | Live Binance + Polymarket end-to-end integration not yet verified |
-| DQS-BUG-002 | P1 | OPEN | resolution | YES | Market resolution rules not yet auto-verified against the day's rules text |
-| DQS-BUG-003 | P1 | OPEN | timezones | YES | Sofia/New York DST edge cases need explicit integration tests |
-| DQS-BUG-004 | P2 | OPEN | scoring | NO | Hit-price scoring not yet persisted |
-| DQS-BUG-005 | P2 | OPEN | context | NO | Gemini failure/fallback path needs recorded test |
-| DQS-BUG-006 | P3 | OPEN | dashboard | NO | GitHub Pages observability deployment not yet verified |
+| DQS-BUG-001 | P1 | CLOSED | integrations | YES | Binance + Gamma + CLOB live health verified |
+| DQS-BUG-002 | P1 | CLOSED | resolution rules | YES | Live rules parser verified source/pair/1m/Close/12:00 ET/boundary |
+| DQS-BUG-003 | P1 | CLOSED | timezones | YES | DST vectors + exact historical Binance replay verified |
+| DQS-BUG-004 | P2 | OPEN | hit scoring | NO | Range candidate can proceed; hit scoring is not yet counted |
+| DQS-BUG-005 | P2 | VERIFY | Gemini context | NO | Missing-key fallback verified; full API failure test remains |
+| DQS-BUG-006 | P3 | OPEN | Pages | NO | docs dashboard exists; public Pages still needs visual confirmation |
+| DQS-BUG-007 | P2 | CLOSED | Binance runner access | NO | HTTP 451 handled with official market-data fallback |
+| DQS-BUG-008 | P1 | CLOSED | resolution timestamp | YES | Fixed 12:00-close vs 12:00-open off-by-one; replay PASS |
+| DQS-BUG-009 | P1 | CLOSED | market structure | YES | Open-ended range tails restored; live range coverage 11/11 |
 
-## Bug entry requirements
+## Verification evidence
 
-Every bug must record:
+- CI run #31: **18/18 tests PASS**.
+- LIVE-DATA-001 run #22: **success**.
+- Health state: **VERIFY**, because Gemini is currently `VERIFY`; there are **no red checks**.
+- Binance: PASS via public market-data endpoint.
+- Polymarket Gamma: PASS.
+- Polymarket CLOB: PASS.
+- Range coverage: PASS — 11 total brackets, including both open-ended tails.
+- Market rules: PASS.
+- FOMC calendar gate: PASS.
+- Timezone mapping: PASS.
+- Exact historical resolution replay: PASS.
 
-- stable ID (`DQS-BUG-NNN`);
-- severity and status;
-- affected module;
-- whether it blocks PAPER testing;
-- exact reproduction/evidence;
-- expected vs actual behavior when applicable;
-- next action;
-- fix commit/PR once available;
-- verification result before `CLOSED`.
+## Current gate
 
-## Rule
+`CANDIDATE_READY`
 
-A bug is **not closed because code was changed**. It is closed only after a separate verification run reproduces the original scenario and passes.
+This allows **DQS-BTC-CANDIDATE-001**, which is stored separately and does **not** count toward PAPER 20.
+
+Official `DQS-BTC-P001/20` remains locked until the candidate completes the full lifecycle:
+
+`morning lock → immutable hash → post-lock benchmark → resolution → score → review`.
