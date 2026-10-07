@@ -91,3 +91,18 @@ The current build is intentionally `BLOCKED` until LIVE-DATA-001, market-rule ve
 ## PAPER 20 rule
 
 See `docs/PAPER-20.md`. A run does not count toward PAPER 20 unless the readiness gate was `READY_FOR_PAPER` before the morning lock.
+
+
+## Candidate lifecycle
+
+Before official PAPER 20, use the manual GitHub Actions workflow **DQS BTC Candidate**.
+
+- `action=lock` must be run during **05:00–08:00 Europe/Sofia** on an eligible day.
+- Thursday is rejected by the workflow/protocol.
+- The lock runs LIVE-DATA health first, then stores a non-counting candidate under `artifacts/candidates/YYYY-MM-DD/BTC/`.
+- After the market resolution time, run the same workflow with `action=resolve`.
+- Candidate artifacts never increment the official PAPER 20 scoreboard.
+
+Current QA state: **CANDIDATE_READY**. Official PAPER remains **0/20** until a clean candidate lifecycle is reviewed.
+
+Gemini is currently optional for candidate readiness. To turn the context layer from VERIFY to PASS, add `GEMINI_API_KEY` as a GitHub Actions repository secret. The numerical forecast and FOMC hard gate do not depend on Gemini.
