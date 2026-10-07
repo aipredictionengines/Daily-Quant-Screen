@@ -1,0 +1,15 @@
+{
+  "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+  "year": 2026,
+  "meeting_days": [
+    "2026-01-27", "2026-01-28",
+    "2026-03-17", "2026-03-18",
+    "2026-04-28", "2026-04-29",
+    "2026-06-16", "2026-06-17",
+    "2026-07-28", "2026-07-29",
+    "2026-09-15", "2026-09-16",
+    "2026-10-27", "2026-10-28",
+    "2026-12-08", "2026-12-09"
+  ],
+  "note": "Meeting days only. Minutes releases, speeches and other Fed publications do not trigger this hard skip."
+}
