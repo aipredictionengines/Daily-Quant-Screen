@@ -1,0 +1,96 @@
+name: DQS BTC Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Candidate lifecycle action"
+        required: true
+        type: choice
+        options:
+          - lock
+          - resolve
+        default: lock
+      market_date:
+        description: "YYYY-MM-DD; leave blank to use current Europe/Sofia date"
+        required: false
+        type: string
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve market date
+        id: date
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.market_date }}" ]; then
+            D="${{ inputs.market_date }}"
+          else
+            D="$(TZ=Europe/Sofia date +%F)"
+          fi
+          echo "date=$D" >> "$GITHUB_OUTPUT"
+
+      - name: Candidate readiness gate
+        if: inputs.action == 'lock'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from dqs.qa import readiness_report
+          r = readiness_report(Path("."))
+          print(r)
+          if not r.get("candidate_ready"):
+              raise SystemExit("Candidate gate is not ready")
+          PY
+
+      - name: Thursday hard skip
+        if: inputs.action == 'lock'
+        shell: bash
+        run: |
+          D="${{ steps.date.outputs.date }}"
+          if [ "$(TZ=Europe/Sofia date -d "$D" +%u)" = "4" ]; then
+            echo "Thursday is excluded by protocol."
+            exit 2
+          fi
+
+      - name: LIVE-DATA health before candidate lock
+        if: inputs.action == 'lock'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          D="${{ steps.date.outputs.date }}"
+          python -m dqs.health --root . --date "$D" --output "candidate-health-$D.json"
+
+      - name: Lock non-counting candidate
+        if: inputs.action == 'lock'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          D="${{ steps.date.outputs.date }}"
+          python -m dqs.cli --root . morning --date "$D" --mode candidate
+          python -m dqs.cli --root . render --date "$D" --mode candidate
+
+      - name: Resolve non-counting candidate
+        if: inputs.action == 'resolve'
+        run: |
+          D="${{ steps.date.outputs.date }}"
+          python -m dqs.cli --root . resolve --date "$D" --mode candidate
+          python -m dqs.cli --root . render --date "$D" --mode candidate
+
+      - name: Upload candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-${{ inputs.action }}-${{ steps.date.outputs.date }}
+          path: |
+            candidate-health-*.json
+            artifacts/candidates/${{ steps.date.outputs.date }}/BTC/
+          if-no-files-found: warn
+          retention-days: 90
