@@ -1,42 +1,45 @@
 {
-  "schema_version": "dqs.qa.buglog.v0.1",
-  "updated_at": "2026-10-07T06:15:00+03:00",
+  "schema_version": "dqs.qa.buglog.v0.2",
+  "updated_at": "2026-10-07T15:30:00+03:00",
   "bugs": [
     {
       "id": "DQS-BUG-001",
-      "title": "Live Binance + Polymarket API integration has not been verified end-to-end",
+      "title": "Live Binance + Polymarket API integration had not been verified end-to-end",
       "severity": "P1",
-      "status": "OPEN",
+      "status": "CLOSED",
       "area": "integrations",
       "blocks_paper_test": true,
       "found_in": "BUILD-001",
-      "description": "Unit tests pass, but the build environment could not perform live network calls. The morning pipeline must complete against the real public APIs before PAPER 20 starts.",
-      "evidence": "Known build limitation documented in README.md",
-      "next_action": "Run LIVE-DATA-001 health test against Binance klines, Polymarket Gamma and Polymarket CLOB; capture raw responses and verify parsers."
+      "description": "The initial build had no recorded live network verification.",
+      "evidence": "LIVE-DATA-001 run #18: Binance PASS, Polymarket Gamma PASS, Polymarket CLOB PASS; health artifact retained by GitHub Actions.",
+      "verification": "GitHub Actions LIVE-DATA-001 completed successfully after the Binance public market-data fallback was added.",
+      "next_action": "None."
     },
     {
       "id": "DQS-BUG-002",
-      "title": "Daily Polymarket resolution rule is configured but not automatically verified against the market rules text",
+      "title": "Daily Polymarket resolution rules were not automatically verified against live market text",
       "severity": "P1",
-      "status": "OPEN",
+      "status": "CLOSED",
       "area": "resolution",
       "blocks_paper_test": true,
       "found_in": "BUILD-001",
-      "description": "The pipeline currently relies on configured resolution timezone/time. Before a scored forecast, the exact source, symbol, candle, time and boundary convention must match that day's market rules.",
-      "evidence": "README limitation: exact resolution rule must remain market-specific",
-      "next_action": "Add a rules snapshot/verification step and refuse scoring when rule verification is not PASS."
+      "description": "Scoring must verify source, pair, interval, metric, closing time and boundary convention from the day's market rules.",
+      "evidence": "LIVE-DATA-001 run #18 matched Binance, BTC/USDT, 1m, Close, closing at 12:00 ET and higher-bracket exact-boundary rule.",
+      "verification": "Live Gamma rules signature returned PASS.",
+      "next_action": "Keep refusing official scoring if future market rules do not match."
     },
     {
       "id": "DQS-BUG-003",
-      "title": "Europe/Sofia ↔ America/New_York DST edge cases need integration tests",
+      "title": "Europe/Sofia ↔ America/New_York DST edge cases lacked verification",
       "severity": "P1",
-      "status": "OPEN",
+      "status": "CLOSED",
       "area": "timezones",
       "blocks_paper_test": true,
       "found_in": "BUILD-001",
-      "description": "The implementation uses IANA time zones, but the periods when US and EU daylight-saving transitions differ need explicit tests to prevent one-hour resolution errors.",
-      "evidence": "Time conversion is critical to lock and resolution timestamps",
-      "next_action": "Add DST test vectors for spring/fall transition windows and verify exact UTC candle timestamps."
+      "description": "US/EU DST transition windows can shift the Sofia clock conversion by one hour.",
+      "evidence": "CI run #25 passed explicit winter, summer, spring-mismatch and fall-mismatch timezone vectors. LIVE-DATA-001 run #18 mapped 12:00 ET to 19:00 Sofia on 2026-10-07 and replayed the prior day's exact Binance candle.",
+      "verification": "18/18 unit tests PASS plus historical 1m timestamp replay PASS.",
+      "next_action": "Retain IANA timezone conversion; never hardcode +7 hours."
     },
     {
       "id": "DQS-BUG-004",
@@ -47,20 +50,20 @@
       "blocks_paper_test": false,
       "found_in": "BUILD-001",
       "description": "BUILD-001 can estimate hit probabilities, but score.json currently focuses on daily range scoring.",
-      "evidence": "Known limitation documented in README.md",
+      "evidence": "Known limitation documented in README.md.",
       "next_action": "Implement high/low-based hit resolution and Brier scoring before HIT PAPER tests are counted."
     },
     {
       "id": "DQS-BUG-005",
-      "title": "Gemini context failure path needs a recorded fallback test",
+      "title": "Gemini context fallback needs full failure-path verification",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "VERIFY",
       "area": "context",
       "blocks_paper_test": false,
       "found_in": "BUILD-001",
-      "description": "Gemini is non-authoritative for the numerical forecast, but the system should prove that API errors degrade to VERIFY/UNKNOWN without breaking the forecast pipeline.",
-      "evidence": "Pipeline records Gemini status but fallback has not been live-tested",
-      "next_action": "Run with missing/invalid GEMINI_API_KEY and a simulated HTTP failure; confirm deterministic safe degradation."
+      "description": "Gemini is non-authoritative for the numerical forecast. Missing-key behavior has been verified; HTTP/error fallback still needs a recorded test.",
+      "evidence": "LIVE-DATA-001 run #18 returned Gemini VERIFY with no API key while all numerical/source checks remained healthy.",
+      "next_action": "Add GEMINI_API_KEY as a GitHub Actions secret and separately test an intentional API failure."
     },
     {
       "id": "DQS-BUG-006",
@@ -70,9 +73,48 @@
       "area": "dashboard",
       "blocks_paper_test": false,
       "found_in": "BUILD-001",
-      "description": "The HTML renderer exists locally, but the public Pages deployment and latest-status view have not been tested.",
-      "evidence": "Repository has not yet been created/deployed",
-      "next_action": "Publish docs/ via GitHub Pages and confirm the current forecast, benchmark, resolution, score and QA status are visible."
+      "description": "The docs dashboard exists, but the public Pages deployment still needs visual confirmation.",
+      "evidence": "docs/index.html is present on main.",
+      "next_action": "Enable main:/docs in GitHub Pages and confirm the page loads on phone/desktop."
+    },
+    {
+      "id": "DQS-BUG-007",
+      "title": "GitHub-hosted runner received HTTP 451 from api.binance.com",
+      "severity": "P2",
+      "status": "CLOSED",
+      "area": "integrations",
+      "blocks_paper_test": false,
+      "found_in": "LIVE-DATA-001",
+      "description": "The first health run could not reach the primary Binance API hostname from the runner region.",
+      "evidence": "LIVE-DATA-001 run #1 failed with HTTP 451; official market-data-only fallback data-api.binance.vision was added.",
+      "verification": "Subsequent live runs PASS; run #18 reports base_url_used=data-api.binance.vision.",
+      "next_action": "Keep all Binance bases observable in health evidence."
+    },
+    {
+      "id": "DQS-BUG-008",
+      "title": "Resolution code used the candle opened at 12:00 instead of the 1m candle closing at 12:00 ET",
+      "severity": "P1",
+      "status": "CLOSED",
+      "area": "resolution",
+      "blocks_paper_test": true,
+      "found_in": "LIVE-DATA-001",
+      "description": "Live market rules explicitly say the Binance one-minute candle closes at 12:00 ET. The corresponding candle opens at 11:59 ET.",
+      "evidence": "Resolution code changed to CLOSE_AT semantics. LIVE-DATA-001 run #18 replayed 2026-10-06 with expected and actual open/close millisecond timestamps equal.",
+      "verification": "Historical exact-timestamp replay PASS plus unit resolution test PASS in CI run #25.",
+      "next_action": "Keep candle_reference=CLOSE_AT in config and rules verification."
+    },
+    {
+      "id": "DQS-BUG-009",
+      "title": "Open-ended Polymarket range tails were dropped by the parser",
+      "severity": "P1",
+      "status": "CLOSED",
+      "area": "market-structure",
+      "blocks_paper_test": true,
+      "found_in": "LIVE-DATA-001",
+      "description": "The original parser only accepted two-number brackets and omitted the lower and upper open-ended tails, making probability coverage incomplete.",
+      "evidence": "Parser now supports lower=None / upper=None tails. LIVE-DATA-001 run #18 discovered 11 total brackets: 9 finite + lower tail + upper tail.",
+      "verification": "Range coverage PASS in live health and parser unit tests PASS in CI run #25.",
+      "next_action": "Treat missing either tail as FAIL in LIVE-DATA health."
     }
   ]
 }
