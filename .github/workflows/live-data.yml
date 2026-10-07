@@ -1,0 +1,32 @@
+name: LIVE-DATA-001
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dqs/**"
+      - "tests/**"
+      - "config.json"
+      - ".github/workflows/live-data.yml"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run LIVE-DATA-001
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m dqs.health --date "$(TZ=Europe/Sofia date +%F)" --output live-health.json
+      - name: Upload health evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-health
+          path: live-health.json
+          retention-days: 30
