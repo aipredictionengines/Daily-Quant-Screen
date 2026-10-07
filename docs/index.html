@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily Quant Screen</title>
+<style>
+body{margin:0;background:#0b0f14;color:#e8eef7;font-family:Inter,system-ui,sans-serif}
+.wrap{max-width:980px;margin:auto;padding:28px}
+.card{background:#121923;border:1px solid #253040;border-radius:16px;padding:20px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.metric{background:#0e151e;border-radius:12px;padding:14px}
+.big{font-size:28px;font-weight:700}
+.muted{color:#90a0b5}.bad{color:#ff8f8f}.ok{color:#90f0b2}
+table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #253040;text-align:left}
+a{color:#8bd5ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Daily Quant Screen</h1>
+<p class="muted">BUILD-001 · BTC Daily Range · PAPER 20 not started</p>
+<div class="grid">
+  <div class="metric"><div class="muted">QA state</div><div class="big bad">BLOCKED</div></div>
+  <div class="metric"><div class="muted">Unit tests</div><div class="big ok">6 / 6</div></div>
+  <div class="metric"><div class="muted">PAPER 20</div><div class="big">0 / 20</div></div>
+  <div class="metric"><div class="muted">Next gate</div><div class="big">LIVE-DATA-001</div></div>
+</div>
+<div class="card">
+<h2>Open bugs</h2>
+<table>
+<thead><tr><th>ID</th><th>Severity</th><th>Area</th><th>Blocks PAPER?</th></tr></thead>
+<tbody>
+<tr><td>DQS-BUG-001</td><td>P1</td><td>integrations</td><td>YES</td></tr>
+<tr><td>DQS-BUG-002</td><td>P1</td><td>resolution</td><td>YES</td></tr>
+<tr><td>DQS-BUG-003</td><td>P1</td><td>timezones</td><td>YES</td></tr>
+<tr><td>DQS-BUG-004</td><td>P2</td><td>scoring</td><td>NO</td></tr>
+<tr><td>DQS-BUG-005</td><td>P2</td><td>context</td><td>NO</td></tr>
+<tr><td>DQS-BUG-006</td><td>P3</td><td>dashboard</td><td>NO</td></tr>
+</tbody>
+</table>
+</div>
+<div class="card">
+<h2>Readiness rule</h2>
+<p>We do not count a PAPER 20 forecast until all P0/P1 blockers are closed and the full readiness gate passes.</p>
+<p><a href="BUG-LOG.md">Bug Log</a> · <a href="TEST-READINESS.md">Test Readiness</a> · <a href="PAPER-20.md">PAPER 20 protocol</a></p>
+</div>
+</div>
+</body>
+</html>
