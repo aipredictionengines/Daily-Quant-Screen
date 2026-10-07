@@ -25,7 +25,7 @@ def _number(text: str) -> float:
     return float(clean) * multiplier
 
 
-def parse_range_label(text: str) -> tuple[float, float] | None:
+def parse_range_label(text: str) -> tuple[float | None, float | None] | None:
     candidates = re.findall(r"\$?\d[\d,]*(?:\.\d+)?\s*[kKmM]?", text)
     nums: list[float] = []
     for item in candidates:
@@ -38,6 +38,26 @@ def parse_range_label(text: str) -> tuple[float, float] | None:
         a, b = large[0], large[1]
         if a != b:
             return (min(a, b), max(a, b))
+
+    if len(large) == 1:
+        value = large[0]
+        lower_text = text.lower()
+        if (
+            "<" in text
+            or "less than" in lower_text
+            or "below" in lower_text
+            or "under" in lower_text
+            or "or lower" in lower_text
+        ):
+            return (None, value)
+        if (
+            ">" in text
+            or "greater than" in lower_text
+            or "above" in lower_text
+            or "over" in lower_text
+            or "or higher" in lower_text
+        ):
+            return (value, None)
     return None
 
 
@@ -209,8 +229,16 @@ class PolymarketAdapter:
                 market_id=str(market.get("id")) if market.get("id") else None,
                 yes_asset_id=ids[0] if ids else None,
             ))
-        uniq: dict[tuple[float, float], RangeBracket] = {(x.lower, x.upper): x for x in out}
-        return [uniq[k] for k in sorted(uniq)]
+        uniq: dict[tuple[float | None, float | None], RangeBracket] = {(x.lower, x.upper): x for x in out}
+
+        def sort_key(key: tuple[float | None, float | None]) -> tuple[float, float]:
+            lower, upper = key
+            return (
+                float("-inf") if lower is None else lower,
+                float("inf") if upper is None else upper,
+            )
+
+        return [uniq[k] for k in sorted(uniq, key=sort_key)]
 
     @staticmethod
     def _extract_hits(event: dict[str, Any]) -> list[HitLevel]:
