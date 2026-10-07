@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
 
-from dqs.http import get_json
+from dqs.http import HttpError, get_json
 from dqs.models import Candle
 
 
-BINANCE_BASE = "https://api.binance.com"
-
+# Binance documents data-api.binance.vision as the market-data-only base for
+# endpoints with NONE security. Keep api.binance.com first because Polymarket's
+# resolution language points to Binance spot data; use data-api as an official
+# Binance fallback when the primary hostname is geo-blocked from a runner.
+BINANCE_BASES = (
+    "https://api.binance.com",
+    "https://data-api.binance.vision",
+    "https://api1.binance.com",
+    "https://api2.binance.com",
+    "https://api3.binance.com",
+    "https://api4.binance.com",
+)
 
 _INTERVAL_MS = {
     "1m": 60_000,
@@ -22,14 +32,29 @@ _INTERVAL_MS = {
 
 @dataclass
 class BinanceAdapter:
-    base_url: str = BINANCE_BASE
+    base_url: str | None = None
+    last_base_url: str | None = None
+
+    def _bases(self) -> tuple[str, ...]:
+        return (self.base_url,) if self.base_url else BINANCE_BASES
+
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        errors: list[str] = []
+        for base in self._bases():
+            try:
+                data = get_json(f"{base}{path}", params)
+                self.last_base_url = base
+                return data
+            except HttpError as exc:
+                errors.append(f"{base}: {exc}")
+        raise HttpError("All Binance public market-data bases failed: " + " | ".join(errors))
 
     def ping(self) -> bool:
-        get_json(f"{self.base_url}/api/v3/ping")
+        self._get("/api/v3/ping")
         return True
 
     def price(self, symbol: str) -> float:
-        data = get_json(f"{self.base_url}/api/v3/ticker/price", {"symbol": symbol})
+        data = self._get("/api/v3/ticker/price", {"symbol": symbol})
         return float(data["price"])
 
     def fetch_klines(
@@ -47,17 +72,16 @@ class BinanceAdapter:
 
         while remaining > 0:
             limit = min(1000, remaining)
-            params = {"symbol": symbol, "interval": interval, "limit": limit}
+            params: dict[str, Any] = {"symbol": symbol, "interval": interval, "limit": limit}
             if cursor is not None:
                 params["endTime"] = cursor
-            raw = get_json(f"{self.base_url}/api/v3/klines", params)
+            raw = self._get("/api/v3/klines", params)
             if not raw:
                 break
             parsed = [self._parse_kline(row) for row in raw]
             chunks.append(parsed)
             remaining -= len(parsed)
-            first_open = parsed[0].open_time_ms
-            cursor = first_open - 1
+            cursor = parsed[0].open_time_ms - 1
             if len(parsed) < limit:
                 break
 
@@ -67,8 +91,8 @@ class BinanceAdapter:
         return ordered[-total:]
 
     def fetch_one_minute_at(self, symbol: str, open_time_ms: int) -> Candle:
-        raw = get_json(
-            f"{self.base_url}/api/v3/klines",
+        raw = self._get(
+            "/api/v3/klines",
             {"symbol": symbol, "interval": "1m", "startTime": open_time_ms, "limit": 1},
         )
         if not raw:
