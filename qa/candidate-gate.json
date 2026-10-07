@@ -1,0 +1,9 @@
+{
+  "schema_version": "dqs.qa.candidate-gate.v0.1",
+  "candidate_id": "DQS-BTC-CANDIDATE-001",
+  "state": "CANDIDATE_READY",
+  "market_date": null,
+  "reviewed_at": null,
+  "checks": {},
+  "note": "Candidate has not completed lock → benchmark → resolution → score → review."
+}
